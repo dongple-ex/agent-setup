@@ -64,14 +64,17 @@ original is backed up to `~/.agent-setup/backups/` first.
 ## Quick start
 
 ```sh
+# install the CLI (not published to npm yet)
+npm install --global github:dongple-ex/agent-setup
+
 # new setup repository from the template
-npx agent-setup init
+agent-setup init
 agent-setup doctor          # which agents are installed, risky configs, plaintext secrets
 agent-setup plan --diff     # dry run
 agent-setup apply           # write the base layer (asks for confirmation)
 
 # existing repository on a new PC
-npx agent-setup init --from https://github.com/you/my-agent-setup.git
+agent-setup init --from https://github.com/you/my-agent-setup.git
 agent-setup secrets check   # which secrets this machine still needs
 agent-setup apply
 ```
@@ -217,4 +220,4 @@ project tests and a TOML editor that preserves comments and foreign tables.
 ## Status
 
 Prototype (0.1.0). Not yet published to npm; run it with `node bin/agent-setup.js` or
-`npx github:OWNER/agent-setup` once the repository is public.
+`npx github:dongple-ex/agent-setup` once the repository is public.

@@ -23,7 +23,8 @@ Inside each layer:
 ## New machine
 
 ```sh
-npx agent-setup init --from <this repository's git URL>
+npm install --global github:dongple-ex/agent-setup
+agent-setup init --from <this repository's git URL>
 agent-setup doctor
 agent-setup secrets check
 agent-setup apply

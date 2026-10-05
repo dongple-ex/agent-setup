@@ -9,7 +9,7 @@
 
 .EXAMPLE
   # Download, read, then run (recommended over piping to iex):
-  Invoke-RestMethod https://raw.githubusercontent.com/OWNER/agent-setup/main/install/install.ps1 -OutFile install-agent-setup.ps1
+  Invoke-RestMethod https://raw.githubusercontent.com/dongple-ex/agent-setup/main/install/install.ps1 -OutFile install-agent-setup.ps1
   notepad .\install-agent-setup.ps1
   powershell -ExecutionPolicy Bypass -File .\install-agent-setup.ps1 -Repo https://github.com/you/my-agent-setup.git
 
@@ -17,7 +17,7 @@
   Git URL (or local folder) of your setup repository. Empty creates a new repository from the template.
 
 .PARAMETER Package
-  npm package spec of the CLI, for example "agent-setup", "agent-setup@0.1.0" or "github:OWNER/agent-setup#v0.1.0".
+  npm package spec of the CLI, for example "github:dongple-ex/agent-setup" (default) or "github:dongple-ex/agent-setup#v0.1.0".
 
 .PARAMETER InstallAgents
   Also install Claude Code, Codex and GitHub Copilot CLI with winget.
@@ -27,7 +27,7 @@
 #>
 param(
   [string]$Repo = '',
-  [string]$Package = 'agent-setup',
+  [string]$Package = 'github:dongple-ex/agent-setup',
   [switch]$InstallAgents,
   [switch]$Apply
 )

@@ -1,17 +1,17 @@
 #!/usr/bin/env sh
 # Bootstrap agent-setup on macOS, Linux or WSL.
 #
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/agent-setup/main/install/install.sh -o install-agent-setup.sh
+#   curl -fsSL https://raw.githubusercontent.com/dongple-ex/agent-setup/main/install/install.sh -o install-agent-setup.sh
 #   less install-agent-setup.sh
 #   sh install-agent-setup.sh https://github.com/you/my-agent-setup.git
 #
 # Environment:
-#   AGENT_SETUP_PACKAGE   npm package spec (default: agent-setup)
+#   AGENT_SETUP_PACKAGE   npm package spec (default: github:dongple-ex/agent-setup)
 #   AGENT_SETUP_APPLY=1   run "agent-setup apply" at the end
 set -eu
 
 REPO="${1:-}"
-PACKAGE="${AGENT_SETUP_PACKAGE:-agent-setup}"
+PACKAGE="${AGENT_SETUP_PACKAGE:-github:dongple-ex/agent-setup}"
 
 have() {
   command -v "$1" >/dev/null 2>&1

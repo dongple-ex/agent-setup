@@ -53,14 +53,17 @@ agent-setup이 쓰는 내용은 아래 세 가지 중 하나이며, 무엇을 �
 ## 시작하기
 
 ```sh
+# CLI 설치 (아직 npm에 배포하지 않음)
+npm install --global github:dongple-ex/agent-setup
+
 # 템플릿으로 새 설정 저장소 만들기
-npx agent-setup init
+agent-setup init
 agent-setup doctor          # 설치된 에이전트, 위험한 설정, 평문 비밀값 점검
 agent-setup plan --diff     # 미리 보기 (아무것도 쓰지 않음)
 agent-setup apply           # base 레이어 적용 (확인을 받은 뒤 씀)
 
 # 새 PC에서 기존 저장소 가져오기
-npx agent-setup init --from https://github.com/you/my-agent-setup.git
+agent-setup init --from https://github.com/you/my-agent-setup.git
 agent-setup secrets check   # 이 PC에 아직 없는 비밀값 확인
 agent-setup apply
 ```
@@ -179,4 +182,4 @@ npm test        # node --test, 의존성 없음
 
 ## 상태
 
-프로토타입(0.1.0)입니다. 아직 npm에 배포하지 않았으므로 `node bin/agent-setup.js`로 실행하거나, 저장소를 공개한 뒤 `npx github:OWNER/agent-setup`으로 실행합니다.
+프로토타입(0.1.0)입니다. 아직 npm에 배포하지 않았으므로 `node bin/agent-setup.js`로 실행하거나, 저장소를 공개한 뒤 `npx github:dongple-ex/agent-setup`으로 실행합니다.
