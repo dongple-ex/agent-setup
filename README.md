@@ -16,6 +16,8 @@ keep their own content.
 
 Zero dependencies. Node.js 18.17+. Windows, macOS, Linux, WSL.
 
+New here? Start with the [beginner's guide](docs/GUIDE.en.md).
+
 [한국어 문서](README.ko.md) · [처음 사용자 가이드 (한국어)](docs/GUIDE.ko.md)
 
 ## Why
