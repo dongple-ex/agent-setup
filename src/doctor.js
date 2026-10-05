@@ -12,9 +12,9 @@ import { hasSource } from './context.js';
 import { loadState } from './state.js';
 import { backendFor } from './secrets/index.js';
 import { findRepoRoot } from './project.js';
+import { SECRET_KEY, REFERENCE } from './util/redact.js';
 
-const SECRET_KEY = /(pass(word)?|pwd|secret|token|api[_-]?key|private[_-]?key|credential)/i;
-const REFERENCE = /^\$\{[^}]+\}$|^\$[A-Za-z_][A-Za-z0-9_]*$|^\{env:[^}]+\}$|^@@secret:/;
+const PROJECT_CONFIGS = ['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', '.gemini/settings.json', '.codex/config.toml'];
 
 function version(cmd) {
   const r = run(cmd, ['--version'], { timeout: 15000 });
@@ -38,6 +38,15 @@ function symlinkCapable() {
   }
 }
 
+function jsonObject(text) {
+  try {
+    const v = JSON.parse(text);
+    return v && typeof v === 'object' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 function plaintextSecrets(obj, prefix = '') {
   const hits = [];
   if (!obj || typeof obj !== 'object') {
@@ -48,6 +57,10 @@ function plaintextSecrets(obj, prefix = '') {
     if (typeof v === 'string') {
       if (SECRET_KEY.test(k) && v && !REFERENCE.test(v)) {
         hits.push(p);
+      }
+      const nested = /^\s*[{[]/.test(v) ? jsonObject(v) : null;
+      if (nested) {
+        hits.push(...plaintextSecrets(nested, p));
       }
       if (/^(ghp_|github_pat_|sk-ant-|sk-[A-Za-z0-9]{20,}|xox[bp]-|AKIA[0-9A-Z]{16})/.test(v)) {
         hits.push(`${p} (token pattern)`);
@@ -74,6 +87,25 @@ function sizeOf(file) {
   } catch {
     return 0;
   }
+}
+
+export function projectSecretChecks(root) {
+  const checks = [];
+  for (const f of PROJECT_CONFIGS) {
+    const t = readText(path.join(root, f));
+    if (!t) {
+      continue;
+    }
+    try {
+      const hits = plaintextSecrets(f.endsWith('.toml') ? new TomlDocument(t.text).plain : parseJsonc(t.text));
+      if (hits.length) {
+        checks.push({ level: 'error', msg: `${path.join(root, f)}: possible plaintext secrets at ${hits.join(', ')}; replace them with \${secret:NAME} in the source and let agent-setup render references` });
+      }
+    } catch {
+      continue;
+    }
+  }
+  return checks;
 }
 
 export function runDoctor(ctx) {
@@ -145,6 +177,10 @@ export function runDoctor(ctx) {
           }
         }
       }
+      const hits = plaintextSecrets(doc.plain);
+      if (hits.length) {
+        add('warn', `codex: ${codexCfg} has possible plaintext secrets at ${hits.join(', ')}`);
+      }
       if (/^profile\s*=/m.test(ct.text)) {
         add('warn', 'codex: "profile = ..." is no longer supported since 0.134.0; use ~/.codex/<name>.config.toml profile files');
       }
@@ -167,20 +203,7 @@ export function runDoctor(ctx) {
     if (claudeMd && has('AGENTS.md') && !/@AGENTS\.md/.test(claudeMd.text) && claudeMd.text.trim().length > 200) {
       add('warn', `${root}: CLAUDE.md has its own content and AGENTS.md exists; Copilot CLI, Cursor CLI, Devin and Factory read both files`);
     }
-    for (const f of ['.mcp.json', '.cursor/mcp.json', '.vscode/mcp.json', '.gemini/settings.json']) {
-      const t = readText(path.join(root, f));
-      if (!t) {
-        continue;
-      }
-      try {
-        const hits = plaintextSecrets(parseJsonc(t.text));
-        if (hits.length) {
-          add('error', `${path.join(root, f)}: possible plaintext secrets at ${hits.join(', ')}; replace them with \${secret:NAME} in the source and let agent-setup render references`);
-        }
-      } catch {
-        continue;
-      }
-    }
+    report.checks.push(...projectSecretChecks(root));
     const ag2 = readText(path.join(ctx.paths.geminiHome, 'config', 'mcp_config.json'));
     if (ag2) {
       try {

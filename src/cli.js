@@ -20,6 +20,7 @@ import { parseJsonc, stringifyJson } from './formats/jsonc.js';
 import { getBlockContent, upsertBlock } from './formats/mdblock.js';
 import { run, runInherit, which } from './util/proc.js';
 import { info, warn, error, table, c, mask, setQuiet } from './util/log.js';
+import { maskSecretFields } from './util/redact.js';
 
 const PKG = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const TEMPLATE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'templates', 'init');
@@ -177,7 +178,7 @@ function redactor(ctx) {
         out = out.split(escaped).join('***');
       }
     }
-    return out;
+    return maskSecretFields(out);
   };
 }
 

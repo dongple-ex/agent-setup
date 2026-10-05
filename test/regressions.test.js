@@ -351,6 +351,71 @@ test('#13 JSON files with comments are not rewritten without --force', () => {
   assert.match(read(path.join(sb.home, '.gemini', 'settings.json')), /\/\/ my note/);
 });
 
+test('secret fields are masked in diff text while references and other values stay readable', async () => {
+  const { maskSecretFields } = await import('../src/util/redact.js');
+  const masked = maskSecretFields([
+    '    -SERVICENOW_BROWSER_PASSWORD = "toml-secret-1"',
+    '    ~ svc: {"command":"uvx","env":{"API_KEY":"json-secret-2","MODE":"browser"}} -> {}',
+    '    -INSTANCE_CONFIG = "{\\"prod\\":{\\"url\\":\\"https://x\\",\\"password\\":\\"nested-secret-3\\"}}"',
+    '    +args = ["exec", "--env", "SVC_PASSWORD=@@secret:svc/password@@", "--token", "${secret:svc/token}"]',
+    '    +"TOKEN": "${SVC_TOKEN}", "use_token": true',
+    '    -DB_PASSWORD = "unterminated-secret-4',
+    '    SERVICENOW_AUTH_TYPE = "browser"',
+  ].join('\n'));
+  for (const s of ['toml-secret-1', 'json-secret-2', 'nested-secret-3', 'unterminated-secret-4']) {
+    assert.doesNotMatch(masked, new RegExp(s));
+  }
+  assert.match(masked, /"MODE":"browser"/);
+  assert.match(masked, /\\"url\\":\\"https:\/\/x\\"/);
+  assert.match(masked, /SVC_PASSWORD=@@secret:svc\/password@@/);
+  assert.match(masked, /\$\{secret:svc\/token\}/);
+  assert.match(masked, /"TOKEN": "\$\{SVC_TOKEN\}", "use_token": true/);
+  assert.match(masked, /SERVICENOW_AUTH_TYPE = "browser"$/);
+  assert.equal(masked.split('\n').length, 7);
+});
+
+test('plan --diff does not print plaintext secrets that already exist in a conflicting file', () => {
+  const sb = sandbox();
+  manifest(sb, ['codex']);
+  write(path.join(sb.source, 'base', 'mcp', 'svc.jsonc'), JSON.stringify({ command: 'uvx', args: ['svc-mcp'], env: { SVC_PASSWORD: '${secret:svc/password}' } }));
+  write(path.join(sb.home, '.codex', 'config.toml'), [
+    'model = "gpt-x"',
+    '',
+    '[mcp_servers.svc]',
+    'command = "old-svc"',
+    '',
+    '[mcp_servers.svc.env]',
+    'SVC_PASSWORD = "plain-secret-123"',
+    'INSTANCE_CONFIG = "{\\"prod\\":{\\"password\\":\\"nested-secret-789\\"}}"',
+    '',
+  ].join('\n'));
+  const r = cli(sb, ['plan', '--diff'], { env: { AGENT_SETUP_SECRET_SVC_PASSWORD: 'keychain-value-456' } });
+  assert.match(r.out, /conflict/);
+  assert.match(r.out, /SVC_PASSWORD/);
+  assert.doesNotMatch(r.out, /plain-secret-123|nested-secret-789|keychain-value-456/);
+});
+
+test('doctor finds plaintext secrets in project .codex/config.toml and inside JSON strings', async () => {
+  const { projectSecretChecks } = await import('../src/doctor.js');
+  const sb = sandbox();
+  const root = path.join(sb.root, 'proj');
+  write(path.join(root, '.codex', 'config.toml'), [
+    '[mcp_servers.svc.env]',
+    'SVC_PASSWORD = "plain-secret-123"',
+    'INSTANCE_CONFIG = "{\\"prod\\":{\\"password\\":\\"nested-secret-789\\"}}"',
+    'SVC_MODE = "browser"',
+    '',
+  ].join('\n'));
+  write(path.join(root, '.mcp.json'), JSON.stringify({ mcpServers: { svc: { command: 'uvx', env: { SVC_PASSWORD: '${SVC_PASSWORD}' } } } }));
+  const checks = projectSecretChecks(root);
+  assert.equal(checks.length, 1);
+  assert.equal(checks[0].level, 'error');
+  assert.match(checks[0].msg, /\.codex[\\/]config\.toml/);
+  assert.match(checks[0].msg, /mcp_servers\.svc\.env\.SVC_PASSWORD/);
+  assert.match(checks[0].msg, /mcp_servers\.svc\.env\.INSTANCE_CONFIG\.prod\.password/);
+  assert.doesNotMatch(checks[0].msg, /SVC_MODE|plain-secret-123|nested-secret-789/);
+});
+
 test('remote URLs with ports and trailing .git/ normalize to host/org/repo', async () => {
   const { normalizeRemote } = await import('../src/project.js');
   assert.equal(normalizeRemote('ssh://git@host.example:22/org/repo.git/'), 'host.example/org/repo');
