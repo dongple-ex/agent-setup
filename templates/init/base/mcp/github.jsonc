@@ -1,0 +1,10 @@
+{
+  // Neutral MCP server definition. agent-setup converts it into each agent's own format.
+  // Secrets: "${secret:NAME}" (store with "agent-setup secrets set NAME"). Environment variables: "${env:NAME}".
+  // Remove "enabled": false to activate this example.
+  "enabled": false,
+  "transport": "http",
+  "url": "https://api.githubcopilot.com/mcp/",
+  "headers": { "Authorization": "Bearer ${secret:github/token}" },
+  "targets": ["claude", "codex", "gemini", "copilot", "cursor"]
+}

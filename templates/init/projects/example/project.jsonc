@@ -1,0 +1,24 @@
+{
+  "name": "example",
+  "description": "Example project layer. Delete this folder when you no longer need it.",
+
+  // "private": only local, git-excluded files (.claude/rules/agent-setup/, .agents/rules/, .github/instructions/, ...).
+  //            Tracked files are never edited, so this is safe for client repositories.
+  // "shared":  committable files (an AGENTS.md block, .mcp.json with ${VAR} references, path-scoped rules).
+  "mode": "private",
+
+  // How to recognize this project on any machine, independent of its folder path.
+  "match": {
+    "gitRemote": ["github.com/example-org/example-repo"],
+    "dirName": ["example_workspace"]
+  },
+
+  "targets": "inherit",
+  "vars": {},
+
+  // Keep Claude Code's auto memory inside the project folder (git-excluded) so purge removes it with the project.
+  "memory": { "claude": "project" },
+
+  // "agent-setup project purge example" also removes this project's agent transcripts and sessions on this machine.
+  "purge": { "agentData": true }
+}

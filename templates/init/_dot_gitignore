@@ -1,0 +1,5 @@
+# Never commit machine state or secrets
+.env
+.env.*
+*.local.*
+secrets.json

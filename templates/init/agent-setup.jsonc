@@ -1,0 +1,41 @@
+{
+  // agent-setup source repository.
+  // Layout: base/ follows you to every machine, projects/<name>/ is applied per project and can be purged.
+  "version": 1,
+  "name": "my-agent-setup",
+
+  // Agents to configure: "auto" (agents found on each machine), "all", or a list such as
+  // ["claude", "codex", "gemini", "antigravity", "copilot", "cursor", "opencode", "zed", "junie", "kiro",
+  //  "amp", "factory", "devin", "qwen", "cline", "goose"]. Run "agent-setup agents" for the full table.
+  "targets": "auto",
+
+  // Shared layers applied before base, lowest priority first (for example a team repository checkout).
+  // "extends": [{ "name": "team", "path": "../team-agent-setup/base", "git": "https://github.com/acme/team-agent-setup.git", "optional": true }],
+  "extends": [],
+
+  "base": "base",
+  "projects": "projects",
+
+  // Variables for *.tmpl files, settings fragments and MCP definitions: {{vars.name}}.
+  // Built-ins: {{home}}, {{homeSlash}}, {{os}}, {{hostname}}, {{user}}, {{source}}, {{node}}, {{claudeHome}}, ...
+  // Put machine-specific values in ~/.agent-setup/config.jsonc under "vars" instead of here.
+  "vars": {
+    "screenshots_dir": "{{homeSlash}}/Pictures/Screenshots"
+  },
+
+  "options": {
+    // secrets.mode:
+    //   "auto"        stdio MCP servers receive secrets through "agent-setup exec"; HTTP servers use env references
+    //                 (skipped, with a warning, for agents whose config cannot reference environment variables)
+    //   "reference"   only write ${VAR}-style references; you provide the environment variables
+    //   "materialize" write secret values into machine-local files (never into shared project files)
+    "secrets": { "backend": "auto", "mode": "auto" },
+    // Install skills into ~/.agents/skills, the shared folder read by Codex, Copilot, Cursor, Gemini CLI, Zed, Junie, OpenCode, Amp, Factory, Goose and Devin.
+    "skills": { "universal": true },
+    "instructions": { "header": true },
+    // Add AGENTS.md to Gemini CLI's context.fileName so it reads project AGENTS.md files.
+    "gemini": { "readAgentsMd": true },
+    // claude.mcp: "cli" registers user-level MCP servers through "claude mcp add-json"; "json" edits ~/.claude.json directly.
+    "claude": { "agentsMdImport": "auto", "mcp": "cli" }
+  }
+}

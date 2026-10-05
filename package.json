@@ -1,0 +1,39 @@
+{
+  "name": "agent-setup",
+  "version": "0.1.0",
+  "description": "Manage instructions, skills, commands, MCP servers and settings for AI coding agents (Claude Code, Codex, Gemini CLI, Antigravity, Copilot, Cursor, ...) as a base layer that follows you to every machine and project layers you can drop when a project ends.",
+  "type": "module",
+  "bin": {
+    "agent-setup": "bin/agent-setup.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "install",
+    "README.md",
+    "README.ko.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "agents.md",
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "antigravity",
+    "copilot",
+    "cursor",
+    "mcp",
+    "dotfiles"
+  ],
+  "license": "MIT"
+}
