@@ -423,6 +423,7 @@ All of these commands are read-only and safe to run at any time. When something 
 | --- | --- | --- |
 | `agent-setup doctor` | Installed agents, plain-text passwords in config files, settings in the wrong place, rules file sizes | After installing, or when something behaves oddly |
 | `agent-setup status` | Files agent-setup manages and files changed outside it since the last apply | When you suspect a config file was edited by hand |
+| `agent-setup show` | Instructions, skills, MCP servers, setting keys and files in each layer, the agents that receive them, and the project list. `show <name>` details one layer | When you want to see what your setup repository holds at a glance |
 | `agent-setup plan --diff` | What an apply would change, line by line | Every time before applying |
 | `agent-setup validate` | Format errors, plain-text secrets and invalid skill names in the setup repository | Before committing |
 | `agent-setup secrets check` | Secrets the setup repository refers to that this machine lacks | After bringing your setup to a new machine |
@@ -522,6 +523,7 @@ Commands marked "yes" in the read-only column write nothing and can be run at an
 | base | `agent-setup apply` | Applies the base layer | no |
 | base | `agent-setup sync` | Pulls the setup repository, then applies | no |
 | base | `agent-setup status` | Shows managed files and files changed outside agent-setup | yes |
+| base | `agent-setup show [name]` | Shows what each layer holds and which agents receive it | yes |
 | base | `agent-setup uninstall` | Removes everything agent-setup wrote | no |
 | project | `agent-setup project init <name> --mode private --remote <URL>` | Creates a project layer | no |
 | project | `agent-setup project list` | Lists project layers | yes |

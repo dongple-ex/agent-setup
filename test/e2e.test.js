@@ -334,3 +334,38 @@ test('uninstall removes managed outputs and keeps foreign content', () => {
   assert.equal(read(path.join(sb.home, '.codex', 'AGENTS.md')).trim(), '# Keep');
   assert.ok(!fs.existsSync(path.join(sb.home, '.claude', 'rules', 'agent-setup', '00-core.md')));
 });
+
+test('show lists layers, targets, setting keys and secret names without values', () => {
+  const sb = sandbox();
+  baseRepo(sb, ['claude', 'codex']);
+  write(path.join(sb.source, 'base', 'settings', 'codex.toml'), 'model = "secret-model-value"\n');
+  write(path.join(sb.source, 'base', 'skills', 'claude-only', 'SKILL.md'), '---\nname: claude-only\ndescription: Only for Claude.\n---\n# C\n');
+  write(path.join(sb.source, 'base', 'skills', 'claude-only', 'agent-setup.jsonc'), '{"targets":["claude"]}');
+  write(path.join(sb.source, 'projects', 'acme', 'project.jsonc'), JSON.stringify({ name: 'acme', mode: 'private', match: { dirName: ['acme'] }, targets: ['claude'] }));
+  write(path.join(sb.source, 'projects', 'acme', 'mcp', 'tool.jsonc'), JSON.stringify({ command: 'tool', args: [], env: { TOKEN: '${secret:acme/token}' } }));
+  let r = cli(sb, ['show']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /Layer base/);
+  assert.match(r.out, /agents\s+claude, codex/);
+  assert.match(r.out, /demo-skill\s+all\s+Demo skill for tests\./);
+  assert.match(r.out, /claude-only\s+claude\s+Only for Claude\./);
+  assert.match(r.out, /codex\s+codex\.toml\s+model/);
+  assert.match(r.out, /acme\s+private\s+match acme\s+not applied\s+mcp 1/);
+  assert.doesNotMatch(r.out, /secret-model-value/);
+  assert.doesNotMatch(r.out, / +$/m, 'no trailing spaces');
+  r = cli(sb, ['show', 'acme']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /Layer project:acme/);
+  assert.match(r.out, /agents\s+claude$/m);
+  assert.match(r.out, /tool\s+all\s+tool\s+secrets: acme\/token/);
+  r = cli(sb, ['show', '--json']);
+  assert.equal(r.code, 0, r.out);
+  const j = JSON.parse(r.out);
+  assert.deepEqual(j.layers.map((l) => l.name), ['base']);
+  assert.deepEqual(j.projects[0].mcp[0].secrets, ['acme/token']);
+  assert.deepEqual(j.layers[0].settings.find((s) => s.agent === 'codex').keys, ['model']);
+  assert.doesNotMatch(r.out, /secret-model-value/);
+  r = cli(sb, ['show', 'nope']);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /no layer named "nope"\. Layers: base, acme/);
+});

@@ -154,6 +154,7 @@ agent-setup project purge acme       # 프로젝트가 끝났을 때 실행한�
 | `plan [--diff] [--all]` / `apply [--yes] [--force] [--prune]` | base 레이어를 미리 보거나 적용한다. `--prune`을 주면 더 이상 선택하지 않은 에이전트의 산출물도 지운다 |
 | `sync` | 설정 저장소(와 team 레이어)를 `git pull --ff-only`한 뒤 적용한다 |
 | `status` | 관리 중인 파일과 바깥에서 바뀐 항목을 보여 준다 |
+| `show [layer] [--json]` | 레이어별로 들어 있는 규칙·스킬·MCP 서버·설정 키·파일과 받는 에이전트를 보여 준다. 프로젝트는 한 줄 요약으로 보여 준다 |
 | `project list / init / detect / plan / apply / purge` | project 레이어를 다룬다 |
 | `secrets list / check / set / get / delete` | 비밀값을 다룬다 |
 | `exec --env K=V -- cmd` | 비밀값을 주입해서 명령을 실행한다 |

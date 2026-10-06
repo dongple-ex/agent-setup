@@ -15,6 +15,7 @@ import { planImport, applyImport } from './importer.js';
 import { validateSource } from './validate.js';
 import { getSecret, getSecrets, setSecret, deleteSecret, listSecrets, backendFor } from './secrets/index.js';
 import { findSecretRefs } from './template.js';
+import { summarizeLayer, countItems } from './show.js';
 import { readText, writeTextAtomic, exists, isDir, listFiles, sha256, hashFiles, readDirSnapshot } from './util/fsx.js';
 import { parseJsonc, stringifyJson } from './formats/jsonc.js';
 import { getBlockContent, upsertBlock } from './formats/mdblock.js';
@@ -380,6 +381,115 @@ function cmdStatus(ctx, flags) {
       info(`  ${n}  ${short(ctx, p.root)}  (${p.appliedAt})`);
     }
   }
+  return 0;
+}
+
+function matchText(match) {
+  return match.gitRemote.join(' ') || match.dirName.join(' ') || match.path.join(' ') || '-';
+}
+
+function targetText(item) {
+  const base = item.targets ? item.targets.join(',') : 'all';
+  return item.exclude && item.exclude.length ? `${base} except ${item.exclude.join(',')}` : base;
+}
+
+function clip(s, width = 60) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  let used = 0;
+  let out = '';
+  for (const ch of t) {
+    const w = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/.test(ch) ? 2 : 1;
+    if (used + w > width - 3) {
+      return `${out}...`;
+    }
+    used += w;
+    out += ch;
+  }
+  return out;
+}
+
+function keyText(keys) {
+  return keys.length > 4 ? `${keys.slice(0, 3).join(', ')}, +${keys.length - 3}` : keys.join(', ');
+}
+
+function printLayerSummary(ctx, v) {
+  info(`${c.bold(`Layer ${v.name}`)}  ${short(ctx, v.dir)}${v.missing ? c.yellow('  (folder not found)') : ''}`);
+  if (v.project) {
+    const p = v.project;
+    info(`  mode      ${p.mode}, match ${matchText(p.match)}, ${p.appliedAt ? `applied at ${short(ctx, p.appliedAt)}` : 'not applied on this machine'}`);
+    if (p.description) {
+      info(`  about     ${clip(p.description)}`);
+    }
+  }
+  info(`  agents    ${v.project && v.project.targets === 'inherit' ? 'inherit -> ' : ''}${v.resolvedAgents.join(', ') || 'none'}`);
+  const section = (title, rows, count = rows.length) => {
+    if (!rows.length) {
+      return;
+    }
+    info(`  ${title} (${count})`);
+    table(rows.map((r) => {
+      const cells = ['  ', ...r];
+      while (cells[cells.length - 1] === '') {
+        cells.pop();
+      }
+      return cells;
+    }));
+  };
+  const flagsOf = (i) => [i.template ? 'template' : '', i.paths.length ? `paths: ${i.paths.join(', ')}` : ''].filter(Boolean).join('  ');
+  section('instructions', v.instructions.map((i) => [i.id, targetText(i), flagsOf(i)]));
+  section('skills', v.skills.map((s) => [s.name, targetText(s), clip(s.description)]));
+  section('commands', v.commands.map((s) => [s.name, targetText(s), clip(s.description)]));
+  section('subagents', v.agents.map((s) => [s.name, targetText(s), clip(s.description)]));
+  section('mcp', v.mcp.map((m) => [m.name, targetText(m), m.command ? path.basename(m.command) : m.url || '', m.secrets.length ? `secrets: ${m.secrets.join(', ')}` : '']));
+  section('settings', v.settings.map((s) => [s.agent, s.file, `${keyText(s.keys)}${s.os ? `  (${s.os})` : ''}`]));
+  section('files', v.files.map((f) => [f.agent, f.files.join(', ')]), v.files.reduce((n, f) => n + f.files.length, 0));
+}
+
+function cmdShow(ctx, flags, positional) {
+  const manifest = prepare(ctx);
+  const state = loadState(ctx);
+  const only = list(flags.only);
+  const skip = list(flags.skip);
+  const userAgents = resolveTargets(ctx, manifest, { only, skip }).map((a) => a.id);
+  const userViews = loadUserLayers(ctx, manifest).map((l) => ({ ...summarizeLayer(l), resolvedAgents: userAgents }));
+  const projectView = (p) => ({
+    ...summarizeLayer(loadLayer(p.dir, `project:${p.name}`, ctx.os)),
+    resolvedAgents: resolveTargets(ctx, manifest, { project: p, only, skip }).map((a) => a.id),
+    project: { name: p.name, mode: p.mode, description: p.description, match: p.match, targets: p.targets, appliedAt: state.projects[p.name]?.root || null },
+  });
+  const projects = listProjects(manifest);
+  const name = positional[0];
+  if (name) {
+    const user = userViews.find((v) => v.name === name);
+    const p = user ? null : projects.find((x) => x.name === String(name).replace(/^project:/, ''));
+    if (!user && !p) {
+      throw new Error(`no layer named "${name}". Layers: ${[...userViews.map((v) => v.name), ...projects.map((x) => x.name)].join(', ') || 'none'}`);
+    }
+    const view = user || projectView(p);
+    if (flags.json) {
+      info(JSON.stringify({ layers: [view] }, null, 2));
+      return 0;
+    }
+    printLayerSummary(ctx, view);
+    return 0;
+  }
+  const projectViews = projects.map(projectView);
+  if (flags.json) {
+    info(JSON.stringify({ layers: userViews, projects: projectViews }, null, 2));
+    return 0;
+  }
+  userViews.forEach((v, i) => {
+    if (i) {
+      info('');
+    }
+    printLayerSummary(ctx, v);
+  });
+  if (!projectViews.length) {
+    info(`\nNo projects. Create one with "agent-setup project init <name>".`);
+    return 0;
+  }
+  info(`\n${c.bold(`Projects (${projectViews.length})`)}  details: agent-setup show <name>`);
+  table(projectViews.map((v) => ['  ', v.project.name, v.project.mode, `match ${matchText(v.project.match)}`, v.project.appliedAt ? `applied at ${short(ctx, v.project.appliedAt)}` : 'not applied', Object.entries(countItems(v)).map(([k, n]) => `${k} ${n}`).join(', ') || 'empty']));
   return 0;
 }
 
@@ -808,6 +918,7 @@ Setup
   init [dir] [--from <git-url|dir>]   create or clone a setup repository and register it
   doctor                              check this machine, found agents and risky configs
   agents                              list supported agents and where they read config
+  show [layer] [--json]               list what each layer holds and which agents receive it
   validate [--strict]                 lint the setup repository (skills, MCP, secrets)
   import [--from claude,codex,...]    capture existing user-level config into the base layer
 
@@ -864,6 +975,8 @@ export async function main(argv) {
       return cmdPlanApply(ctx, flags, positional, true);
     case 'status':
       return cmdStatus(ctx, flags);
+    case 'show':
+      return cmdShow(ctx, flags, positional);
     case 'project':
       return cmdProject(ctx, flags, positional);
     case 'secrets':

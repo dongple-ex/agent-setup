@@ -189,6 +189,7 @@ agent-setup project purge acme       # at the end of the engagement
 | `plan [--diff] [--all]` / `apply [--yes] [--force] [--prune]` | dry run / write the base layer; `--prune` also removes outputs of agents that are no longer selected |
 | `sync` | `git pull --ff-only` the setup repository (and team layers), then apply |
 | `status` | managed outputs and drift |
+| `show [layer] [--json]` | what each layer holds (instructions, skills, MCP servers, setting keys, files) and which agents receive it; projects as one-line summaries |
 | `project list / init / detect / plan / apply / purge` | project layers |
 | `secrets list / check / set / get / delete` | secrets |
 | `exec --env K=V -- cmd` | run a command with secrets injected |

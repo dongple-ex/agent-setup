@@ -423,6 +423,7 @@ project 레이어는 특정 프로젝트 폴더에서만 쓰는 내 설정입니
 | --- | --- | --- |
 | `agent-setup doctor` | 설치된 에이전트, 설정 파일의 평문 비밀번호, 잘못된 위치에 들어간 설정, 규칙 파일 크기 | 처음 설치할 때, 동작이 이상할 때 |
 | `agent-setup status` | agent-setup이 관리하는 파일 목록과, 적용한 뒤 바깥에서 바뀐 파일 | 설정 파일을 직접 고친 것 같을 때 |
+| `agent-setup show` | 레이어별 규칙·스킬·MCP 서버·설정 키·파일과 받는 에이전트, 프로젝트 목록. `show <이름>`은 그 레이어만 자세히 보여 줍니다 | 설정 저장소에 무엇이 들어 있는지 한눈에 보고 싶을 때 |
 | `agent-setup plan --diff` | 적용하면 바뀔 내용과 줄 단위 차이 | 적용하기 전에 항상 |
 | `agent-setup validate` | 설정 저장소의 형식 오류, 평문 비밀값, 잘못된 스킬 이름 | 커밋하기 전 |
 | `agent-setup secrets check` | 설정 저장소가 참조하는데 이 PC에 없는 비밀값 | 새 PC에 가져왔을 때 |
@@ -522,6 +523,7 @@ npm install --global github:dongple-ex/agent-setup
 | base | `agent-setup apply` | base 레이어를 적용합니다 | 아니오 |
 | base | `agent-setup sync` | 설정 저장소를 pull한 뒤 적용합니다 | 아니오 |
 | base | `agent-setup status` | 관리 중인 파일과 바깥에서 바뀐 파일을 보여 줍니다 | 예 |
+| base | `agent-setup show [이름]` | 레이어별 내용과 받는 에이전트를 보여 줍니다 | 예 |
 | base | `agent-setup uninstall` | agent-setup이 쓴 내용을 모두 지웁니다 | 아니오 |
 | project | `agent-setup project init <이름> --mode private --remote <주소>` | 프로젝트 레이어를 만듭니다 | 아니오 |
 | project | `agent-setup project list` | 프로젝트 레이어 목록을 보여 줍니다 | 예 |
