@@ -205,6 +205,8 @@ Common options: `--only a,b`, `--skip a,b`, `--source <dir>`, `--home <dir>` (sa
 | rulesync, ruler | many agents, project rules | personal/global layer (ruler), machine-local values, secrets, merging into agent-rewritten files, project purge |
 | Microsoft APM | manifest, lockfile, Windows installers | instructions layering per project, private client mode |
 | chezmoi | dotfiles, templates, password managers | knowledge of agent formats and locations |
+| dotagents (iannuttall) | one `.agents` folder symlinked into six agents, global and project scope, backups | key-level merging instead of symlinks, MCP servers and agent settings, secrets, machine-local values, project purge |
+| agentrig | Agent Plugins v1 packages (skills, MCP) for Claude Code, Codex and Cursor, with sharing | always-on instruction files, agent settings, keychain secrets, machine-local values |
 | Claude Code plugins / claude.ai sync | native distribution of skills, commands, MCP | cannot carry CLAUDE.md or rules; Claude only |
 
 agent-setup can sit next to these: keep skills in a Claude plugin marketplace, or let chezmoi

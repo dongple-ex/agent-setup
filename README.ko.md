@@ -170,6 +170,8 @@ agent-setup project purge acme       # 프로젝트가 끝났을 때 실행한�
 | rulesync, ruler | 지원 에이전트가 많고 프로젝트 규칙 생성에 강하다 | 개인 전역 레이어(ruler에 없음), PC 전용 값, 비밀값, 에이전트가 다시 쓰는 파일에 대한 키 단위 병합, 프로젝트 폐기 |
 | Microsoft APM | 매니페스트와 잠금 파일, Windows 설치 지원 | 프로젝트별 지시문 레이어, 고객사용 비공개 모드 |
 | chezmoi | dotfiles, 템플릿, 비밀번호 관리자 연동 | 에이전트별 형식과 위치에 대한 지식 |
+| dotagents (iannuttall) | `.agents` 폴더 하나를 에이전트 6종에 심볼릭 링크로 연결하고, 전역·프로젝트 범위와 백업을 지원한다 | 링크 대신 키 단위 병합, MCP 서버와 에이전트 설정, 비밀값, PC 전용 값, 프로젝트 폐기 |
+| agentrig | Agent Plugins v1 패키지(스킬, MCP)를 Claude Code·Codex·Cursor에 설치하고 공유한다 | 항상 적용되는 지시문 파일, 에이전트 설정, 키체인 비밀값, PC 전용 값 |
 | Claude Code 플러그인, claude.ai 동기화 | 스킬·명령·MCP를 공식 경로로 배포한다 | CLAUDE.md와 rules를 실을 수 없고 Claude 전용이다 |
 
 agent-setup은 이 도구들과 함께 쓸 수 있습니다. 예를 들어 스킬은 Claude 플러그인 마켓플레이스로 배포하고, agent-setup 설치는 chezmoi에 맡길 수 있습니다.
