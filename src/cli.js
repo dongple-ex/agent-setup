@@ -6,7 +6,7 @@ import { createContext, hasSource } from './context.js';
 import { loadManifest, listProjects, getProject } from './manifest.js';
 import { loadLayer, mergeLayers } from './layers.js';
 import { ADAPTERS, getAdapter } from './adapters/registry.js';
-import { renderScope, resolveTargets, detectAdapters, gitDir, normalizeKey } from './render.js';
+import { renderScope, resolveTargets, detectAdapters, gitDir, normalizeKey, trackedFiles } from './render.js';
 import { buildPlan, applyPlan, summarize, pending, describeItem } from './engine.js';
 import { loadState, saveState, scopeKeyOf, recordsForScope } from './state.js';
 import { resolveProject, findAgentData, purgeAgentData, assertSafeRoot, projectMatches } from './project.js';
@@ -193,6 +193,10 @@ function secretResolver(ctx) {
   };
 }
 
+function itemLabel(ctx, it) {
+  return it.type === 'block' ? `${short(ctx, it.path)}  [${it.output?.blockId || it.record?.blockId}]` : short(ctx, it.path);
+}
+
 function printPlan(ctx, plan, rendered, flags, title) {
   const redact = redactor(ctx);
   if (flags.json) {
@@ -205,7 +209,7 @@ function printPlan(ctx, plan, rendered, flags, title) {
   const visible = plan.items.filter((it) => flags.all || it.action !== 'noop');
   for (const it of visible) {
     const col = colorFor[it.action] || ((s) => s);
-    const label = it.type === 'block' ? `${short(ctx, it.path)}  [${it.output?.blockId || it.record?.blockId}]` : short(ctx, it.path);
+    const label = itemLabel(ctx, it);
     const who = it.adapters.length > 2 ? `${it.adapters.slice(0, 2).join(',')}+${it.adapters.length - 2}` : it.adapters.join(',');
     info(`  ${col(it.action.padEnd(8))} ${who.padEnd(20)} ${it.type.padEnd(10)} ${label}`);
     for (const l of describeItem(it, { diff: flags.diff, redact })) {
@@ -246,7 +250,7 @@ function printPlan(ctx, plan, rendered, flags, title) {
 function printResults(ctx, results, plan) {
   for (const r of results) {
     const mark = r.status === 'done' ? c.green('done') : r.status === 'failed' ? c.red('failed') : c.yellow('skipped');
-    info(`  ${mark.padEnd(8)} ${r.it.action.padEnd(8)} ${short(ctx, r.it.path)}${r.error ? `  ${c.red(r.error)}` : ''}`);
+    info(`  ${mark.padEnd(8)} ${r.it.action.padEnd(8)} ${r.it.type.padEnd(10)} ${itemLabel(ctx, r.it)}${r.error ? `  ${c.red(r.error)}` : ''}`);
   }
   if (plan.backups.length) {
     info(c.gray(`\nBackups: ${short(ctx, path.join(ctx.paths.stateDir, 'backups', plan.stamp))}`));
@@ -583,8 +587,15 @@ async function cmdProject(ctx, flags, positional) {
     delete state.projects[name];
     saveState(ctx, state);
     if (flags['remove-source'] && project) {
+      const git = trackedFiles(ctx.sourceDir, [path.relative(ctx.sourceDir, project.dir).replace(/\\/g, '/')]);
       fs.rmSync(project.dir, { recursive: true, force: true });
-      info(`Deleted ${project.dir}. Commit the deletion in the setup repository.`);
+      if (!git.reliable) {
+        info(`Deleted ${project.dir}. If the setup repository uses git, commit the deletion.`);
+      } else if (git.tracked.size) {
+        info(`Deleted ${project.dir}. Commit the deletion in the setup repository.`);
+      } else {
+        info(`Deleted ${project.dir}. It was never committed, so there is nothing to commit.`);
+      }
     }
     return 0;
   }

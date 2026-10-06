@@ -453,3 +453,37 @@ test('#14 purge deletes config files it created once they are empty, and the fol
   const status = spawnSync('git', ['-C', repo, 'status', '--porcelain'], { encoding: 'utf8' }).stdout;
   assert.equal(status.trim(), '', `git status must stay clean, got:\n${status}`);
 });
+
+test('#15 purge results name the block they removed, and the source hint follows git', { skip: !HAS_GIT }, () => {
+  const sb = sandbox();
+  manifest(sb, ['claude']);
+  const repo = path.join(sb.root, 'hint');
+  write(path.join(repo, 'README.md'), '# hint\n');
+  spawnSync('git', ['init', '-q', repo]);
+  const layer = (name) => {
+    write(path.join(sb.source, 'projects', name, 'project.jsonc'), JSON.stringify({ name, mode: 'private', match: { dirName: ['hint'] } }));
+    write(path.join(sb.source, 'projects', name, 'instructions', '00.md'), '# Hint\n');
+  };
+  const purge = (name) => {
+    let r = cli(sb, ['project', 'apply', name, '--yes'], { cwd: repo });
+    assert.equal(r.code, 0, r.out);
+    r = cli(sb, ['project', 'purge', name, '--remove-source', '--yes'], { cwd: repo });
+    assert.equal(r.code, 0, r.out);
+    return r.out;
+  };
+  layer('a');
+  let out = purge('a');
+  assert.match(out, /done\s+remove\s+block\s+.*exclude\s+\[project\.a\]/);
+  assert.match(out, /done\s+remove\s+file\s+.*project-a\.md/);
+  assert.match(out, /If the setup repository uses git, commit the deletion/);
+  spawnSync('git', ['init', '-q', sb.source]);
+  layer('b');
+  out = purge('b');
+  assert.match(out, /It was never committed, so there is nothing to commit/);
+  layer('c');
+  spawnSync('git', ['-C', sb.source, 'add', '.']);
+  spawnSync('git', ['-C', sb.source, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'c']);
+  out = purge('c');
+  assert.match(out, /Commit the deletion in the setup repository/);
+  assert.ok(!fs.existsSync(path.join(sb.source, 'projects', 'c')));
+});
