@@ -498,7 +498,19 @@ function planRemoval(rec) {
       if (!merge.changes.length) {
         return null;
       }
-      return { action: 'remove', details: keyChanges(merge.changes), beforeHash: rawHash(o.path), apply: () => writeTextAtomic(o.path, jsonText(merge.result, ts.text), { bom: ts.bom, eol: ts.eol }) };
+      const drop = rec.created === true && Object.keys(merge.result).length === 0;
+      return {
+        action: 'remove',
+        details: keyChanges(merge.changes),
+        beforeHash: rawHash(o.path),
+        apply: () => {
+          if (drop) {
+            removePath(o.path);
+          } else {
+            writeTextAtomic(o.path, jsonText(merge.result, ts.text), { bom: ts.bom, eol: ts.eol });
+          }
+        },
+      };
     }
     case 'toml': {
       const ts = textState(o.path);
@@ -509,7 +521,19 @@ function planRemoval(rec) {
       if (item.action === 'noop' || !item.changes?.length) {
         return null;
       }
-      return { action: 'remove', details: item.details, beforeHash: rawHash(o.path), apply: () => writeTextAtomic(o.path, item.after, { bom: ts.bom, eol: ts.eol }) };
+      const drop = rec.created === true && !item.after.trim();
+      return {
+        action: 'remove',
+        details: item.details,
+        beforeHash: rawHash(o.path),
+        apply: () => {
+          if (drop) {
+            removePath(o.path);
+          } else {
+            writeTextAtomic(o.path, item.after, { bom: ts.bom, eol: ts.eol });
+          }
+        },
+      };
     }
     case 'claude-mcp': {
       const names = Object.keys(rec.servers || {});
@@ -622,7 +646,7 @@ export function applyPlan(ctx, plan, state, { force = false, scope, project = nu
       continue;
     }
     if (it.action === 'noop' && it.output) {
-      state.outputs[it.id] = recordFor(it, plan, scope, project, root, now);
+      state.outputs[it.id] = recordFor(it, plan, scope, project, root, now, state.outputs[it.id]);
       continue;
     }
     if (!runnable) {
@@ -640,6 +664,9 @@ export function applyPlan(ctx, plan, state, { force = false, scope, project = nu
         backupFile(ctx, plan, it.path);
         it.apply();
         delete state.outputs[it.id];
+        if (root) {
+          pruneEmptyParents(it.path, root);
+        }
       } else {
         if (it.type === 'claude-mcp') {
           backupFile(ctx, plan, it.path);
@@ -647,7 +674,7 @@ export function applyPlan(ctx, plan, state, { force = false, scope, project = nu
           backupFile(ctx, plan, it.path);
         }
         APPLIERS[it.type](it.output, it);
-        state.outputs[it.id] = recordFor(it, plan, scope, project, root, now);
+        state.outputs[it.id] = recordFor(it, plan, scope, project, root, now, state.outputs[it.id]);
       }
       results.push({ it, status: 'done' });
     } catch (err) {
@@ -658,9 +685,29 @@ export function applyPlan(ctx, plan, state, { force = false, scope, project = nu
   return results;
 }
 
-function recordFor(it, plan, scope, project, root, now) {
+function pruneEmptyParents(file, root) {
+  const top = path.resolve(root);
+  let dir = path.dirname(path.resolve(file));
+  for (;;) {
+    const rel = path.relative(top, dir);
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep)[0] === '.git') {
+      return;
+    }
+    try {
+      fs.rmdirSync(dir);
+    } catch {
+      return;
+    }
+    dir = path.dirname(dir);
+  }
+}
+
+function recordFor(it, plan, scope, project, root, now, prev = null) {
   const o = it.output;
   const rec = { type: o.type, path: o.path, scopeKey: plan.scopeKey, scope, project: project || null, root: root || null, adapters: [...o.adapters], appliedAt: now };
+  if ((o.type === 'json' || o.type === 'toml') && (it.action === 'create' || prev?.created === true)) {
+    rec.created = true;
+  }
   if (o.type === 'block') {
     rec.blockId = o.blockId;
     rec.style = o.style || 'html';

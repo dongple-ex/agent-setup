@@ -422,3 +422,34 @@ test('remote URLs with ports and trailing .git/ normalize to host/org/repo', asy
   assert.equal(normalizeRemote('git@github.com:acme/portal.git'), 'github.com/acme/portal');
   assert.equal(normalizeRemote('https://user@dev.azure.com/org/proj/_git/repo'), 'dev.azure.com/org/proj/_git/repo');
 });
+
+test('#14 purge deletes config files it created once they are empty, and the folders it created', { skip: !HAS_GIT }, () => {
+  const sb = sandbox();
+  manifest(sb, ['claude', 'codex', 'gemini', 'antigravity', 'copilot']);
+  const repo = path.join(sb.root, 'tidy');
+  write(path.join(repo, 'README.md'), '# tidy\n');
+  write(path.join(repo, '.github', 'workflows', 'ci.yml'), 'on: push\n');
+  write(path.join(repo, '.gitignore'), '/.gemini/\n');
+  spawnSync('git', ['init', '-q', repo]);
+  spawnSync('git', ['-C', repo, 'add', '.']);
+  spawnSync('git', ['-C', repo, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'init']);
+  write(path.join(repo, '.gemini', 'settings.json'), '{}\n');
+  write(path.join(sb.source, 'projects', 't', 'project.jsonc'), JSON.stringify({ name: 't', mode: 'private', match: { dirName: ['tidy'] } }));
+  write(path.join(sb.source, 'projects', 't', 'instructions', '00.md'), '# Trial\n');
+  write(path.join(sb.source, 'projects', 't', 'mcp', 'srv.jsonc'), JSON.stringify({ command: 'srv', args: [] }));
+  let r = cli(sb, ['project', 'apply', '--yes'], { cwd: repo });
+  assert.equal(r.code, 0, r.out);
+  assert.match(read(path.join(repo, '.codex', 'config.toml')), /developer_instructions/);
+  assert.ok(fs.existsSync(path.join(repo, '.agents', 'mcp_config.json')));
+  assert.match(read(path.join(repo, '.gemini', 'settings.json')), /srv/);
+  r = cli(sb, ['project', 'purge', 't', '--yes'], { cwd: repo });
+  assert.equal(r.code, 0, r.out);
+  for (const rel of ['.codex', '.claude', '.agents', path.join('.github', 'instructions'), path.join('.github', 'mcp.json')]) {
+    assert.ok(!fs.existsSync(path.join(repo, rel)), `${rel} should be gone after purge`);
+  }
+  assert.equal(read(path.join(repo, '.github', 'workflows', 'ci.yml')), 'on: push\n');
+  assert.deepEqual(JSON.parse(read(path.join(repo, '.gemini', 'settings.json'))), {}, 'a file that existed before apply is kept');
+  assert.ok(fs.existsSync(path.join(repo, '.git', 'info')));
+  const status = spawnSync('git', ['-C', repo, 'status', '--porcelain'], { encoding: 'utf8' }).stdout;
+  assert.equal(status.trim(), '', `git status must stay clean, got:\n${status}`);
+});
